@@ -1,0 +1,11 @@
+[package]
+name = "fluffy_fortnite"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+bevy = { version = "0.18.1", default-features = false, features = [
+    "2d",
+    "dynamic_linking",
+] }
+log = "0.4.29"
