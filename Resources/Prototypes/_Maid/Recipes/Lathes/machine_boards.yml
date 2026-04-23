@@ -1,5 +1,0 @@
-- type: latheRecipe
-  parent: [ BaseCircuitboardRecipe, BaseSupplyMachineRecipeCategory ]
-  id: MaterialReclaimerMachineCircuitboard
-  icon: { sprite: _Maid/Structures/Machines/material_reclaimer.rsi, state: icon }
-  result: MaterialReclaimerMachineCircuitboard

@@ -1,6 +1,0 @@
-- type: construction
-  id: Hammer
-  graph: Hammer
-  category: construction-category-weapons
-  targetNode: hammer
-  objectType: Item
