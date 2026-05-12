@@ -54,6 +54,10 @@ docker-down:
 docker-interact image='postgres':
     docker compose exec '{{ image }}' bash
 
+# Stream logs from all services and follow output
+docker-logs:
+    docker compose logs -f
+
 # Attach to a running service container without signal proxying.
 docker-attach image='postgres':
     -docker compose attach --sig-proxy=false '{{ image }}' sh
