@@ -1,10 +1,24 @@
 use bevy::prelude::*;
+use bevy_ecs_tiled::prelude::*;
 
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(TiledPlugin::default())
         .add_plugins(HelloPlugin)
+        .add_systems(Startup, startup)
         .run();
+}
+
+fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
+    // Spawn a 2D camera
+    commands.spawn(Camera2d);
+
+    // Load a map asset and retrieve its handle
+    let map_handle: Handle<TiledMapAsset> = asset_server.load("untitled.tmx");
+
+    // Spawn a new entity with the TiledMap component
+    commands.spawn(TiledMap(map_handle));
 }
 
 #[derive(Resource)]
