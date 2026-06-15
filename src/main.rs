@@ -34,6 +34,8 @@ fn add_people(mut commands: Commands) {
 }
 
 fn greet_people(time: Res<Time>, mut timer: ResMut<GreetTimer>, query: Query<&Name, With<Person>>) {
+    // update our timer with the time elapsed since the last update
+    // if that caused the timer to finish, we say hello to everyone
     if timer.0.tick(time.delta()).just_finished() {
         for name in &query {
             println!("hello {}!", name.0);
@@ -42,8 +44,6 @@ fn greet_people(time: Res<Time>, mut timer: ResMut<GreetTimer>, query: Query<&Na
 }
 
 fn update_people(mut query: Query<&mut Name, With<Person>>) {
-    // update our timer with the time elapsed since the last update
-    // if that caused the timer to finish, we say hello to everyone
     for mut name in &mut query {
         if name.0 == "Elaina Proctor" {
             name.0 = "Elaina Hume".to_string();
@@ -53,8 +53,6 @@ fn update_people(mut query: Query<&mut Name, With<Person>>) {
 }
 
 fn hello_world(timer: Res<GreetTimer>) {
-    // update our timer with the time elapsed since the last update
-    // if that caused the timer to finish, we say hello to everyone
     if timer.0.just_finished() {
         println!("hello world!");
     }
