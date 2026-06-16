@@ -18,7 +18,7 @@ fn startup(mut commands: Commands, asset_server: Res<AssetServer>) {
     let map_handle: Handle<TiledMapAsset> = asset_server.load("untitled.tmx");
 
     // Spawn a new entity with the TiledMap component
-    commands.spawn(TiledMap(map_handle));
+    commands.spawn((TiledMap(map_handle), TilemapAnchor::Center));
 }
 
 #[derive(Resource)]
