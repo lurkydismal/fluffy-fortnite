@@ -1,5 +1,18 @@
+use std::collections::HashMap;
+
 use bevy::prelude::*;
 use bevy_ecs_tiled::prelude::*;
+use bevy_replicon::prelude::*;
+use serde::{Deserialize, Serialize};
+
+use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin};
+use bevy_quinnet::{
+    server::{
+        ConnectionLostEvent, EndpointAddrConfiguration, QuinnetServer, QuinnetServerPlugin,
+        ServerEndpointConfiguration, certificate::CertificateRetrievalMode, endpoint::Endpoint,
+    },
+    shared::ClientId,
+};
 
 const WALL_THICKNESS: f32 = 10.0;
 // x coordinates
@@ -22,8 +35,14 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(TiledPlugin::default())
+        .add_plugins(RepliconPlugins)
+        .add_plugins(ScheduleRunnerPlugin::default())
+        .add_plugins(LogPlugin::default())
+        .add_plugins(QuinnetServerPlugin::default())
         .add_plugins(HelloPlugin)
-        .add_systems(Startup, startup)
+        .insert_resource(Users::default())
+        .add_systems(Startup, (startup, start_listening))
+        .add_systems(Update, (handle_client_messages, handle_server_events))
         .add_systems(FixedUpdate, move_player)
         .run();
 }
@@ -61,8 +80,41 @@ struct Person;
 #[derive(Component)]
 struct Name(String);
 
+#[derive(Resource, Debug, Clone, Default)]
+struct Users {
+    names: HashMap<ClientId, String>,
+}
+
 #[derive(Component)]
 struct Paddle;
+
+// Messages from clients
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ClientMessage {
+    Join { name: String },
+    Disconnect {},
+    ChatMessage { message: String },
+}
+
+// Messages from the server
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum ServerMessage {
+    ClientConnected {
+        client_id: ClientId,
+        username: String,
+    },
+    ClientDisconnected {
+        client_id: ClientId,
+    },
+    ChatMessage {
+        client_id: ClientId,
+        message: String,
+    },
+    InitClient {
+        client_id: ClientId,
+        usernames: HashMap<ClientId, String>,
+    },
+}
 
 pub struct HelloPlugin;
 
@@ -131,4 +183,120 @@ fn move_player(
     let right_bound = RIGHT_WALL - WALL_THICKNESS / 2.0 - PADDLE_SIZE.x / 2.0 - PADDLE_PADDING;
 
     paddle_transform.translation.x = new_paddle_position.clamp(left_bound, right_bound);
+}
+
+// fn start_listening(mut server: ResMut<QuinnetServer>) {
+//     server.start_endpoint(ServerEndpointConfiguration {
+//         addr_config: EndpointAddrConfiguration::from_ip(Ipv6Addr::UNSPECIFIED, 6000),
+//         cert_mode: CertificateRetrievalMode::GenerateSelfSigned {
+//             server_hostname: Ipv6Addr::LOCALHOST.to_string(),
+//         },
+//         defaultables: Default::default(),
+//     });
+// }
+
+fn handle_client_messages(mut server: ResMut<QuinnetServer>, mut users: ResMut<Users>) {
+    let endpoint = server.endpoint_mut();
+    for client_id in endpoint.clients() {
+        while let Some(message) = endpoint.try_receive_message(client_id) {
+            match message {
+                ClientMessage::Join { name } => {
+                    if users.names.contains_key(&client_id) {
+                        warn!(
+                            "Received a Join from an already connected client: {}",
+                            client_id
+                        )
+                    } else {
+                        info!("{} connected", name);
+                        users.names.insert(client_id, name.clone());
+                        // Initialize this client with existing state
+                        endpoint
+                            .send_message(
+                                client_id,
+                                ServerMessage::InitClient {
+                                    client_id: client_id,
+                                    usernames: users.names.clone(),
+                                },
+                            )
+                            .unwrap();
+                        // Broadcast the connection event
+                        endpoint
+                            .send_group_message(
+                                users.names.keys(),
+                                ServerMessage::ClientConnected {
+                                    client_id: client_id,
+                                    username: name,
+                                },
+                            )
+                            .unwrap();
+                    }
+                }
+                ClientMessage::Disconnect {} => {
+                    // Tell the server endpoint to disconnect this user
+                    endpoint.disconnect_client(client_id).unwrap();
+                    handle_disconnect(endpoint, &mut users, client_id);
+                }
+                ClientMessage::ChatMessage { message } => {
+                    info!(
+                        "Chat message | {:?}: {}",
+                        users.names.get(&client_id),
+                        message
+                    );
+                    endpoint.try_send_group_message(
+                        users.names.keys(),
+                        ServerMessage::ChatMessage {
+                            client_id: client_id,
+                            message: message,
+                        },
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn handle_server_events(
+    mut connection_lost_events: MessageReader<ConnectionLostEvent>,
+    mut server: ResMut<QuinnetServer>,
+    mut users: ResMut<Users>,
+) {
+    // The server signals us about users that lost connection
+    for client in connection_lost_events.read() {
+        handle_disconnect(server.endpoint_mut(), &mut users, client.id);
+    }
+}
+
+/// Shared disconnection behaviour, whether the client lost connection or asked to disconnect
+fn handle_disconnect(endpoint: &mut Endpoint, users: &mut ResMut<Users>, client_id: ClientId) {
+    // Remove this user
+    if let Some(username) = users.names.remove(&client_id) {
+        // Broadcast its deconnection
+
+        endpoint
+            .send_group_message(
+                users.names.keys(),
+                ServerMessage::ClientDisconnected {
+                    client_id: client_id,
+                },
+            )
+            .unwrap();
+        info!("{} disconnected", username);
+    } else {
+        warn!(
+            "Received a Disconnect from an unknown or disconnected client: {}",
+            client_id
+        )
+    }
+}
+
+fn start_listening(mut server: ResMut<QuinnetServer>) {
+    server
+        .start_endpoint(ServerEndpointConfiguration {
+            addr_config: EndpointAddrConfiguration::from_string("[::]:6000").unwrap(),
+            cert_mode: CertificateRetrievalMode::GenerateSelfSigned {
+                server_hostname: "::1".to_owned(),
+            },
+            defaultables: Default::default(),
+        })
+        .unwrap();
 }

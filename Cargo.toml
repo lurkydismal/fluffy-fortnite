@@ -16,5 +16,8 @@ bevy_ecs_tilemap = { version = "0.18.1", features = ["serde"] }
 bevy_framepace = "0.21.0"
 bevy_mod_debugdump = "0.15.0"
 bevy_prototype_lyon = "0.16.0"
+bevy_quinnet = { version = "0.20.0", features = ["bincode-messages"] }
+bevy_replicon = "0.40.3"
 bevy_tweening = "0.15.0"
 log = "0.4.32"
+serde = { version = "1.0.228", features = ["serde_derive"] }
