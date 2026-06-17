@@ -1,18 +1,16 @@
-use std::collections::HashMap;
-
 use bevy::prelude::*;
 use bevy_ecs_tiled::prelude::*;
-use bevy_replicon::prelude::*;
-use serde::{Deserialize, Serialize};
-
-use bevy::{app::ScheduleRunnerPlugin, log::LogPlugin};
 use bevy_quinnet::{
     server::{
-        ConnectionLostEvent, EndpointAddrConfiguration, QuinnetServer, QuinnetServerPlugin,
-        ServerEndpointConfiguration, certificate::CertificateRetrievalMode, endpoint::Endpoint,
+        ConnectionLostEvent, EndpointAddrConfiguration, QuinnetServer, ServerEndpointConfiguration,
+        certificate::CertificateRetrievalMode, endpoint::Endpoint,
     },
     shared::ClientId,
 };
+use bevy_replicon::prelude::*;
+use bevy_replicon_quinnet::{ChannelsConfigurationExt, RepliconQuinnetPlugins};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 const WALL_THICKNESS: f32 = 10.0;
 // x coordinates
@@ -36,9 +34,7 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugins(TiledPlugin::default())
         .add_plugins(RepliconPlugins)
-        .add_plugins(ScheduleRunnerPlugin::default())
-        .add_plugins(LogPlugin::default())
-        .add_plugins(QuinnetServerPlugin::default())
+        .add_plugins(RepliconQuinnetPlugins)
         .add_plugins(HelloPlugin)
         .insert_resource(Users::default())
         .add_systems(Startup, (startup, start_listening))
