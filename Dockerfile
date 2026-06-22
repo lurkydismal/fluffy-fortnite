@@ -1,10 +1,9 @@
 FROM dhi.io/dotnet:9-sdk-alpine AS base
-RUN apk add --no-cache bash
+RUN apk add --no-cache bash git
 WORKDIR /app
 
 FROM base AS dev
-RUN apk add --no-cache git && \
-    git config --global --add safe.directory /app
+RUN git config --global --add safe.directory /app
 
 FROM dev AS dev-all
 CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickAll.sh" ]
