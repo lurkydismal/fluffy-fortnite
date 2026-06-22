@@ -23,6 +23,8 @@ FROM dhi.io/dotnet:9-alpine AS prod-runtime
 RUN apk add --no-cache bash
 COPY --from=prod /app/bin /app/bin
 COPY --from=prod /app/Scripts/sh /app/Scripts/sh
+RUN addgroup -S app && adduser -S -G app app && chown -R app:app /app
+USER app
 
 FROM prod-runtime AS prod-all
 RUN apk add --no-cache tmux
