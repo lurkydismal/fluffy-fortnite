@@ -1,17 +1,41 @@
 #!/usr/bin/env -S just --justfile
 
-default: docker-up-all
+# Redirects to debug build to avoid accidental optimized builds during development.
+default: run-debug
+
+# Builds the project in debug mode inside a Docker container.
+build-debug: docker-pull
+    docker compose build dev-all
+
+# Build the debug image and start the selected development service.
+[arg('type', pattern='all|server|client')]
+run-debug type='all': build-debug
+    docker compose up -d 'dev-{{ type }}'
+
+# Builds the project in release mode inside a Docker container.
+build-release: docker-pull
+    docker compose build prod-all
+
+# Build the release image and start the selected production service.
+[arg('type', pattern='all|server|client')]
+run-release type='all': build-release
+    docker compose up -d 'prod-{{ type }}'
 
 # Pull images for all services, skipping services that have no build context.
-docker-pull:
+docker-pull images='dhi.io/dotnet:9-sdk-alpine dhi.io/dotnet:9-alpine':
+    if [ -n "{{ images }}" ]; then \
+        for image in {{ images }}; do \
+            docker pull "$image"; \
+        done; \
+    fi
     docker compose  pull --ignore-buildable
 
 # Start all services.
 docker-up-all:
-    docker compose up -d
+    docker compose up -d dev-all prod-all postgres
 
 # Start one service in detached mode.
-docker-up image='postgres':
+docker-up image='postgres prod-server':
     docker compose up -d {{ image }}
 
 # Stop all running containers in the current Docker Compose project without removing containers, networks, or volumes.
@@ -19,8 +43,8 @@ docker-stop:
     docker compose stop
 
 # Stop and remove containers, networks, default resources, and optionally volumes created by the current Docker Compose project.
+[arg('remove_volumes', pattern='false|true')]
 docker-down remove_volumes='false':
-    #!/usr/bin/env bash
     if [ "{{ remove_volumes }}" = "true" ]; then \
         docker compose down --volumes; \
     else \
@@ -45,8 +69,6 @@ docker-stats:
 
 # Remove dangling Docker images that are no longer referenced by any tag.
 docker-remove-unused-images:
-    #!/usr/bin/env bash
-    set -euo pipefail
     docker images -f "dangling=true" -q | xargs -r docker rmi
 
 # Generate a cryptographically secure random alphanumeric token of length `N`. Uses `openssl rand` as the entropy source, encodes as Base64, removes padding and non-alphanumeric output, then retries until the result is exactly `N` characters using only `[A-Za-z0-9]`.

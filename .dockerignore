@@ -1,0 +1,11 @@
+**/Dockerfile*
+**/docker*
+**/.docker*
+**/coverage*
+**/.DS_Store
+**/.git
+**/.gitignore
+**/.env
+**/.vscode
+/bin
+**/obj
