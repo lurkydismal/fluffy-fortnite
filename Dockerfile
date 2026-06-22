@@ -21,8 +21,7 @@ RUN bash Scripts/sh/buildAllRelease.sh
 
 FROM dhi.io/dotnet:9-alpine AS prod-runtime
 RUN apk add --no-cache bash
-COPY --from=prod /app/bin /app/bin
-COPY --from=prod /app/Scripts/sh /app/Scripts/sh
+COPY --from=prod /app /app
 RUN addgroup -S app && adduser -S -G app app && chown -R app:app /app
 USER app
 
