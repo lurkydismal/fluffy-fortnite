@@ -318,3 +318,6 @@ config.json
 # Vim
 **/*~
 **/.*~
+
+# Coverage report gerenated HTML output
+/coverage-report
