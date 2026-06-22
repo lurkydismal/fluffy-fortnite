@@ -311,3 +311,10 @@ Resources/MapImages
 
 config.json
 .github/workflows/update-prs.yaml
+
+# env files (can opt-in for committing if needed)
+.env*
+
+# Vim
+**/*~
+**/.*~
