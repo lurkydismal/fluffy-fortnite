@@ -32,7 +32,7 @@ docker-pull images='dhi.io/dotnet:9-sdk-alpine dhi.io/dotnet:9-alpine':
 
 # Start all services.
 docker-up-all:
-    docker compose up -d dev-all prod-all postgres
+    docker compose up -d prod-all postgres
 
 # Start one service in detached mode.
 docker-up image='postgres prod-server':
