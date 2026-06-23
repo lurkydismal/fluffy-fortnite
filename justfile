@@ -4,21 +4,23 @@
 default: run-debug
 
 # Builds the project in debug mode inside a Docker container.
-build-debug: docker-pull
-    docker compose build dev-all
+[arg('type', pattern='all|server|client')]
+build-debug type='all':
+    docker compose build 'dev-{{ type }}'
 
 # Build the debug image and start the selected development service.
 [arg('type', pattern='all|server|client')]
-run-debug type='all': build-debug
+run-debug type='all':
     docker compose up -d 'dev-{{ type }}'
 
 # Builds the project in release mode inside a Docker container.
-build-release: docker-pull
-    docker compose build prod-all
+[arg('type', pattern='all|server|client')]
+build-release type='all':
+    docker compose build 'prod-{{ type }}'
 
 # Build the release image and start the selected production service.
 [arg('type', pattern='all|server|client')]
-run-release type='all': build-release
+run-release type='all':
     docker compose up -d 'prod-{{ type }}'
 
 # Pull images for all services, skipping services that have no build context.
