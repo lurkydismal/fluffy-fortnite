@@ -1,4 +1,95 @@
+x-prod-base: &prod-base
+  build:
+    context: .
+  image: ${COMPOSE_PROJECT_NAME:-app}
+  volumes:
+    - nuget_packages:/root/.nuget/packages
+  depends_on:
+    postgres:
+      condition: service_healthy
+  restart: unless-stopped
+
+x-dev-base: &dev-base
+  build:
+    context: .
+  volumes:
+    - .:/app
+    - nuget_packages:/root/.nuget/packages
+  tty: true
+  stdin_open: true
+
 services:
+  prod-all:
+    <<: *prod-base
+    build:
+      context: .
+      target: prod-all
+    image: prod-all
+    ports:
+      - "1212:1212"
+
+  prod-server:
+    <<: *prod-base
+    build:
+      context: .
+      target: prod-server
+    image: prod-server
+    ports:
+      - "1212:1212"
+
+  prod-client:
+    <<: *prod-base
+    build:
+      context: .
+      target: prod-client
+    image: prod-client
+    environment:
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
+      XDG_RUNTIME_DIR: /tmp
+    volumes:
+      - nuget_packages:/root/.nuget/packages
+      - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/tmp/${WAYLAND_DISPLAY}
+    devices:
+      - /dev/dri:/dev/dri
+
+  dev-all:
+    <<: *dev-base
+    build:
+      context: .
+      target: dev-all
+    image: dev-all
+    ports:
+      - "1212:1212"
+
+  dev-server:
+    <<: *dev-base
+    build:
+      context: .
+      target: dev-server
+    image: dev-server
+    ports:
+      - "1212:1212"
+
+  dev-client:
+    <<: *dev-base
+    build:
+      context: .
+      target: dev-client
+    image: dev-client
+    environment:
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
+      XDG_RUNTIME_DIR: /tmp
+      GDK_BACKEND: wayland
+      SDL_VIDEODRIVER: wayland
+      MOZ_ENABLE_WAYLAND: 1
+      GLFW_PLATFORM: wayland
+    volumes:
+      - .:/app
+      - nuget_packages:/root/.nuget/packages
+      - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/tmp/${WAYLAND_DISPLAY}
+    devices:
+      - /dev/dri:/dev/dri
+
   postgres:
     image: postgres:alpine
     environment:
@@ -17,4 +108,5 @@ services:
     restart: unless-stopped
 
 volumes:
+  nuget_packages:
   postgres_data:

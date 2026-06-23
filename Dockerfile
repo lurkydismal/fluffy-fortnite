@@ -1,0 +1,43 @@
+FROM dhi.io/dotnet:9-sdk-alpine AS base
+RUN apk add --no-cache bash git
+WORKDIR /app
+
+FROM base AS dev
+RUN git config --global --add safe.directory /app
+
+FROM dev AS dev-all
+RUN apk add --no-cache tmux
+CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickAll.sh" ]
+
+FROM dev AS dev-server
+CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickServer.sh" ]
+
+FROM dev AS dev-client
+RUN apk add --no-cache freetype
+CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickClient.sh" ]
+
+# Production stage
+FROM base AS prod
+COPY . .
+RUN bash Scripts/sh/buildAllRelease.sh
+
+FROM dhi.io/dotnet:9-alpine AS prod-runtime
+RUN apk add --no-cache bash
+COPY --from=prod /app /app
+RUN addgroup -S app && adduser -S -G app app && chown -R app:app /app
+USER app
+
+FROM prod-runtime AS prod-all
+USER root
+RUN apk add --no-cache tmux
+USER app
+CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickAll.sh" ]
+
+FROM prod-runtime AS prod-server
+CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickServer.sh" ]
+
+FROM prod-runtime AS prod-client
+USER root
+RUN apk add --no-cache freetype
+USER app
+CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickClient.sh" ]
