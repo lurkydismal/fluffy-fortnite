@@ -6,12 +6,14 @@ FROM base AS dev
 RUN git config --global --add safe.directory /app
 
 FROM dev AS dev-all
+RUN apk add --no-cache tmux
 CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickAll.sh" ]
 
 FROM dev AS dev-server
 CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickServer.sh" ]
 
 FROM dev AS dev-client
+RUN apk add --no-cache freetype
 CMD [ "/bin/bash", "-lc", "Scripts/sh/buildAllDebug.sh && Scripts/sh/runQuickClient.sh" ]
 
 # Production stage
@@ -33,4 +35,5 @@ FROM prod-runtime AS prod-server
 CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickServer.sh" ]
 
 FROM prod-runtime AS prod-client
+RUN apk add --no-cache freetype
 CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickClient.sh" ]

@@ -43,6 +43,15 @@ services:
       context: .
       target: prod-client
     image: prod-client
+    environment:
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
+      XDG_RUNTIME_DIR: /tmp
+    volumes:
+      - .:/app
+      - nuget_packages:/root/.nuget/packages
+      - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/tmp/${WAYLAND_DISPLAY}
+    devices:
+      - /dev/dri:/dev/dri
 
   dev-all:
     <<: *dev-base
@@ -68,6 +77,19 @@ services:
       context: .
       target: dev-client
     image: dev-client
+    environment:
+      WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
+      XDG_RUNTIME_DIR: /tmp
+      GDK_BACKEND: wayland
+      SDL_VIDEODRIVER: wayland
+      MOZ_ENABLE_WAYLAND: 1
+      GLFW_PLATFORM: wayland
+    volumes:
+      - .:/app
+      - nuget_packages:/root/.nuget/packages
+      - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/tmp/${WAYLAND_DISPLAY}
+    devices:
+      - /dev/dri:/dev/dri
 
   postgres:
     image: postgres:alpine
