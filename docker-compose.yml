@@ -47,7 +47,6 @@ services:
       WAYLAND_DISPLAY: ${WAYLAND_DISPLAY}
       XDG_RUNTIME_DIR: /tmp
     volumes:
-      - .:/app
       - nuget_packages:/root/.nuget/packages
       - ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:/tmp/${WAYLAND_DISPLAY}
     devices:
