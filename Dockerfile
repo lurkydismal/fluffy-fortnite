@@ -28,12 +28,16 @@ RUN addgroup -S app && adduser -S -G app app && chown -R app:app /app
 USER app
 
 FROM prod-runtime AS prod-all
+USER root
 RUN apk add --no-cache tmux
+USER app
 CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickAll.sh" ]
 
 FROM prod-runtime AS prod-server
 CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickServer.sh" ]
 
 FROM prod-runtime AS prod-client
+USER root
 RUN apk add --no-cache freetype
+USER app
 CMD [ "/bin/bash", "-lc", "Scripts/sh/runQuickClient.sh" ]
