@@ -128,6 +128,10 @@ run-tests type='all':
             ;;
     esac
 
+# Generate an HTML code coverage report from the latest coverage results.
+generate-coverage-report:
+    ./Scripts/sh/generateCoverateReportHTML.sh
+
 # Pull images for all services, skipping services that have no build context.
 docker-pull images='':
     if [ -n "{{ images }}" ]; then \
