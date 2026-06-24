@@ -1,30 +1,132 @@
 #!/usr/bin/env -S just --justfile
 
+logs_dir := "{{ logs_dir }}"
+tmux_session := "quick"
+tmux := require("tmux")
+
 # Redirects to debug build to avoid accidental optimized builds during development.
 default: run-debug
 
-# Builds the project in debug mode inside a Docker container.
+# Builds the project in debug mode.
 build-debug:
-    ./Scripts/sh/buildAllDebug.sh
+    dotnet build -c Debug
 
 # Start the selected development service.
 [arg('type', pattern='all|server|client')]
 run-debug type='all': build-debug
     just run {{ type }}
 
-# Builds the project in release mode inside a Docker container.
+# Builds the project in release mode.
 build-release:
-    ./Scripts/sh/buildAllRelease.sh
+    dotnet build -c Release
 
 # Start the selected production service.
 [arg('type', pattern='all|server|client')]
 run-release type='all': build-release
     just run {{ type }}
 
-# Build the release image and start the selected production service.
+# Build all projects in the Tools configuration
+build-tools:
+    dotnet build -c Tools
+
+# Start server/client separately or together in a tmux session.
 [arg('type', pattern='all|server|client')]
 run type='all':
-    ./Scripts/sh/runQuick{{ capitalize(type) }}.sh
+    #!/usr/bin/env bash
+    set -euo pipefail
+    start_server() {
+        dotnet run --project Content.Goobstation.Server --no-build
+    }
+    start_client() {
+        dotnet run --project Content.Goobstation.Client --no-build
+    }
+    ensure_tmux_session() {
+        if {{ tmux }} has-session -t '{{ tmux_session }}' 2>/dev/null; then # Check if session already exists
+            :                                               # Do nothing if session exists
+        else                                                # If session does not exist
+            {{ tmux }} new-session -d -s '{{ tmux_session }}' -n '{{ tmux_session }}' # Create detached tmux session and initial window
+
+            {{ tmux }} split-window -h -t '{{ tmux_session }}':0 # Split first window horizontally into two panes
+
+            {{ tmux }} send-keys -t '{{ tmux_session }}':0.0 'just run server' C-m # Start server script in left pane
+            {{ tmux }} send-keys -t '{{ tmux_session }}':0.1 'just run client' C-m # Start client script in right pane
+
+            {{ tmux }} set-option -p -t '{{ tmux_session }}':0.0 @title "Server" # Set custom pane metadata title for left pane
+            {{ tmux }} set-option -p -t '{{ tmux_session }}':0.1 @title "Client" # Set custom pane metadata title for right pane
+
+            {{ tmux }} set-option -t '{{ tmux_session }}' pane-border-status top         # Enable pane border status display
+            {{ tmux }} set-option -t '{{ tmux_session }}' pane-border-format "#{@title}" # Display custom @title in pane border
+
+            {{ tmux }} rename-window -t '{{ tmux_session }}':0 "Server | Client # (Ctrl-b: ←/→ switch | d detach)" # Set window title with hint
+        fi
+    }
+    attach_tmux_session() {
+        if [ -n "${TMUX-}" ]; then              # Check if already inside a tmux session
+            {{ tmux }} switch-client -t '{{ tmux_session }}' # Switch current client to target session
+        else                                 # If not inside tmux
+            {{ tmux }} attach -t '{{ tmux_session }}'        # Attach to session in new tmux client
+        fi
+
+        {{ tmux }} set-option -t '{{ tmux_session }}':0 mouse on # Enable tmux mouse support for window 0 only
+    }
+    case '{{ type }}' in
+        client) start_client ;;
+        server) start_server ;;
+        all)
+            ensure_tmux_session
+            attach_tmux_session
+            ;;
+    esac
+
+# Execute tests with code coverage and write results to log files
+[arg('type', pattern='all|unit|integration|yaml')]
+run-tests type='all':
+    #!/usr/bin/env bash
+    set -euo pipefail
+    mkdir -p {{ logs_dir }}
+    run() {
+        log_file=$1
+        shift
+        rm -f "{{ logs_dir }}/$log_file"
+        "$@" > "{{ logs_dir }}/$log_file" 2>&1
+    }
+    run_unit() {
+        run Content.Tests.log \
+            dotnet test \
+            --collect:"XPlat Code Coverage" \
+            Content.Tests/Content.Tests.csproj \
+            -c DebugOpt \
+            -- \
+            NUnit.ConsoleOut=0
+    }
+    run_integration() {
+        run Content.IntegrationTests.log \
+            dotnet test \
+            --collect:"XPlat Code Coverage" \
+            Content.IntegrationTests/Content.IntegrationTests.csproj \
+            -c DebugOpt \
+            -- \
+            NUnit.ConsoleOut=0 \
+            NUnit.MapWarningTo=Failed
+    }
+    run_yaml() {
+        run Content.YAMLLinter.log \
+            dotnet run \
+            --project Content.YAMLLinter/Content.YAMLLinter.csproj \
+            -c DebugOpt \
+            -- \
+            NUnit.ConsoleOut=0
+    }
+    case '{{ type }}' in
+        unit) run_unit ;;
+        integration) run_integration ;;
+        yaml) run_yaml ;;
+        all)
+            run_unit
+            run_integration
+            run_yaml
+            ;;
+    esac
 
 # Pull images for all services, skipping services that have no build context.
 docker-pull images='':
